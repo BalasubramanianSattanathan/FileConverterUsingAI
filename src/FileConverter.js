@@ -3,6 +3,10 @@ import axios from 'axios';
 import CustomModal from './CustomModal';
 import './FileConverter.css'; // Import the CSS file
 
+// Azure OpenAI API setup
+const azureOpenAIEndpoint = process.env.REACT_APP_AZURE_OPENAI_ENDPOINT;
+const azureOpenAIApiKey = process.env.REACT_APP_AZURE_OPENAI_API_KEY;
+
 const FileConverter = () => {
     const [inputFormat, setInputFormat] = useState('');
     const [outputFormat, setOutputFormat] = useState('');
@@ -85,7 +89,7 @@ const FileConverter = () => {
     const convertFileWithAzureOpenAI = async (fileContent, instructions) => {
         try {
             const response = await axios.post(
-                `https://dcxazureopenai.openai.azure.com/openai/deployments/gpt-35/chat/completions?api-version=2023-05-15&api-key=23c41a7c5ca942eeb071dff004fe80b7&api-type=azure`,
+                `${azureOpenAIEndpoint}/openai/deployments/gpt-35/chat/completions?api-version=2023-05-15&api-key=${azureOpenAIApiKey}&api-type=azure`,
                 {
                     "model": "gpt-3.5-turbo",
                     "messages": [
