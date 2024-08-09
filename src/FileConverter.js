@@ -11,10 +11,10 @@ const FileConverter = () => {
 
     const [modalOpen, setModalOpen] = useState(false);
     const [modalMessage, setModalMessage] = useState('');
-    
+
     // State to store converted file content
     const [convertedFileContent, setConvertedFileContent] = useState('');
-    
+
     // State to control displaying the converted file section
     const [showConvertedFile, setShowConvertedFile] = useState(false);
 
@@ -82,43 +82,62 @@ const FileConverter = () => {
         return isValid;
     };
 
+    const convertFileWithAzureOpenAI = async (fileContent, instructions) => {
+        try {
+            const response = await axios.post(
+                `https://dcxazureopenai.openai.azure.com/openai/deployments/gpt-35/chat/completions?api-version=2023-05-15&api-key=23c41a7c5ca942eeb071dff004fe80b7&api-type=azure`,
+                {
+                    "model": "gpt-3.5-turbo",
+                    "messages": [
+                        {
+                            "role": "system",
+                            "content": instructions
+                        },
+                        {
+                            "role": "user",
+                            "content": fileContent
+                        }
+                    ]
+                }
+            );
+
+            return response.data.choices[0]?.message?.content || '';
+        } catch (error) {
+            console.error('Error during Azure OpenAI API call:', error);
+            throw new Error('Failed to convert file using Azure OpenAI');
+        }
+    };
+
     const handleConvert = async () => {
         // Validate all fields
         if (!validateFields()) {
             return;
         }
 
-        const formData = new FormData();
-        formData.append('file', file);
-        formData.append('outputFormat', outputFormat);
-        formData.append('instructions', instructions);
-
-        try {
-            const response = await axios.post('http://localhost:5000/api/convert', formData);
-            // Assuming the response.data contains the converted file content
-            setConvertedFileContent(response.data.convertedContent);
-            setShowConvertedFile(true);
-
-            setModalMessage('Conversion completed!');
-            setModalOpen(true);
-        } catch (error) {
-            console.error('Error converting file:', error);
-            setModalMessage('Error converting file. Check console for details.');
-            setModalOpen(true);
-        }
-    };
-
-    const handleSave = async () => {
-        const response = await axios.post('http://localhost:5000/api/save', { fileName: file.name });
-        setModalMessage(response.data.message);
-        setModalOpen(true);
+        const reader = new FileReader();
+        reader.onload = async (e) => {
+            const fileContent = e.target.result;
+            try {
+                const convertedContent = await convertFileWithAzureOpenAI(fileContent, instructions);
+                // Assuming the response.data contains the converted file content
+                setConvertedFileContent(convertedContent);
+                setShowConvertedFile(true);
+                setModalMessage('Conversion completed!');
+                setModalOpen(true);
+            } catch (error) {
+                console.error('Error converting file:', error);
+                setModalMessage('Error converting file. Check console for details.');
+                setModalOpen(true);
+            }
+        };
+        reader.readAsText(file); // Read file content as text
     };
 
     const handleDownload = () => {
         // Create a Blob from the converted file content
         const blob = new Blob([convertedFileContent], { type: 'text/plain' });
         const url = URL.createObjectURL(blob);
-        
+
         // Create a link element to initiate the download
         const a = document.createElement('a');
         a.href = url;
@@ -144,9 +163,8 @@ const FileConverter = () => {
                 <option value=".java">.java</option>
                 <option value=".swift">.swift</option>
             </select>
-            <input type="file" onChange={handleFileChange} required/>
+            <input type="file" onChange={handleFileChange} required />
             {validationErrors.fileFormatError && <p className="error">{validationErrors.fileFormatError}</p>}
-            {/* {validationErrors.fileRequiredError && <p className="error">{validationErrors.fileRequiredError}</p>} */}
             <select onChange={(e) => setOutputFormat(e.target.value)} value={outputFormat}>
                 <option value="" disabled>Select output format</option>
                 <option value=".swift">.swift</option>
@@ -160,9 +178,8 @@ const FileConverter = () => {
                 onChange={(e) => setInstructions(e.target.value)}
                 required
             />
-            {/* {validationErrors.instructionsRequiredError && <p className="error">{validationErrors.instructionsRequiredError}</p>} */}
             <button onClick={handleConvert} disabled={isConvertButtonDisabled()}>Convert</button>
-            
+
             {showConvertedFile && (
                 <div>
                     <h2>Converted File Content</h2>
